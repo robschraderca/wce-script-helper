@@ -2246,9 +2246,12 @@ function loadPersona(card) {
   const colors = { easy: 'var(--green)', medium: 'var(--yellow)', hard: 'var(--red)' };
   const labels = { easy: 'EASY', medium: 'MEDIUM', hard: 'HARD' };
 
-  // Inject ElevenLabs widget
+  // Open ElevenLabs talk-to page in new tab (avoids cross-origin mic permission issues)
+  window.open('https://elevenlabs.io/app/talk-to?agent_id=' + agentId, '_blank');
+
+  // Also show inline info as fallback
   const container = document.getElementById('elevenlabs-widget-container');
-  container.innerHTML = '<elevenlabs-convai agent-id="' + agentId + '"></elevenlabs-convai>';
+  container.innerHTML = '<div style="text-align:center;padding:40px;"><div style="font-size:48px;margin-bottom:16px;">&#127908;</div><div style="color:var(--text);font-size:16px;font-weight:600;margin-bottom:8px;">' + label + '</div><div style="color:var(--text-muted);font-size:13px;margin-bottom:20px;">Voice call opened in a new tab.<br>Click the "Call AI agent" button in the new tab to start practicing.</div><button onclick="window.open(\x27https://elevenlabs.io/app/talk-to?agent_id=' + agentId + '\x27, \x27_blank\x27)" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer;font-weight:600;">Open Again</button></div>';
 
   // Update label
   const labelEl = document.getElementById('active-persona-label');
@@ -2311,8 +2314,8 @@ function backToPersonas() {
 let floatExpanded = false;
 
 function startFloatingPractice(agentId, personaName, difficulty) {
-  // Inject ElevenLabs widget into floating panel
-  document.getElementById('floating-widget-container').innerHTML = '<elevenlabs-convai agent-id="' + agentId + '"></elevenlabs-convai>';
+  // Open ElevenLabs talk-to page in new tab
+  window.open('https://elevenlabs.io/app/talk-to?agent_id=' + agentId, '_blank');
 
   const colors = { easy: 'var(--green)', medium: 'var(--yellow)', hard: 'var(--red)' };
   const label = decodeURIComponent(personaName);
