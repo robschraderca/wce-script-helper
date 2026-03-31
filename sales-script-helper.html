@@ -2248,7 +2248,10 @@ function loadPersona(card) {
 
   // Open ElevenLabs talk-to page in new tab (avoids cross-origin mic permission issues)
   const container = document.getElementById('elevenlabs-widget-container');
-  container.innerHTML = '<iframe src="https://elevenlabs.io/app/talk-to?agent_id=' + agentId + '" allow="microphone; autoplay; clipboard-write" style="width:100%;height:100%;min-height:500px;border:none;border-radius:12px;"></iframe>';
+  container.innerHTML = window._elBuildCallUI('elevenlabs-widget-container');
+  container.dataset.agentId = agentId;
+  var btn = container.querySelector('.el-call-btn');
+  if (btn) btn.onclick = function(){ window._elCall.start(agentId, 'elevenlabs-widget-container'); };
 
   // Update label
   const labelEl = document.getElementById('active-persona-label');
@@ -2275,6 +2278,7 @@ function launchFloating() {
   const difficulty = container.dataset.difficulty;
 
   // Clear the inline iframe
+  if (window._elCall && window._elCall.isActive()) window._elCall.end('elevenlabs-widget-container');
   document.getElementById('elevenlabs-widget-container').innerHTML = '';
   document.getElementById('practice-embed-container').style.display = 'none';
   document.getElementById('persona-grid').style.display = 'grid';
@@ -2285,6 +2289,7 @@ function launchFloating() {
 
 function backToPersonas() {
   // Clear iframe to stop any active session
+  if (window._elCall && window._elCall.isActive()) window._elCall.end('elevenlabs-widget-container');
   document.getElementById('elevenlabs-widget-container').innerHTML = '';
   // Show grid, hide embed
   document.getElementById('persona-grid').style.display = 'grid';
@@ -2312,7 +2317,11 @@ let floatExpanded = false;
 
 function startFloatingPractice(agentId, personaName, difficulty) {
   // Open ElevenLabs talk-to page in new tab
-  document.getElementById('floating-widget-container').innerHTML = '<iframe src="https://elevenlabs.io/app/talk-to?agent_id=' + agentId + '" allow="microphone; autoplay; clipboard-write" style="width:100%;height:100%;min-height:300px;border:none;border-radius:8px;"></iframe>';
+  var floatContainer = document.getElementById('floating-widget-container');
+  floatContainer.innerHTML = window._elBuildCallUI('floating-widget-container');
+  floatContainer.dataset.agentId = agentId;
+  var floatBtn = floatContainer.querySelector('.el-call-btn');
+  if (floatBtn) floatBtn.onclick = function(){ window._elCall.start(agentId, 'floating-widget-container'); };
 
   const colors = { easy: 'var(--green)', medium: 'var(--yellow)', hard: 'var(--red)' };
   const label = decodeURIComponent(personaName);
@@ -2325,6 +2334,7 @@ function startFloatingPractice(agentId, personaName, difficulty) {
 }
 
 function endFloatingPractice() {
+  if (window._elCall && window._elCall.isActive()) window._elCall.end('floating-widget-container');
   document.getElementById('floating-widget-container').innerHTML = '';
   document.getElementById('floating-practice').classList.remove('active', 'expanded');
   floatExpanded = false;
@@ -2338,6 +2348,169 @@ function toggleFloatSize() {
 </script>
 
 <!-- ElevenLabs Conversational AI Widget -->
-<script src="https://unpkg.com/@elevenlabs/convai-widget-embed" async type="text/javascript"></script>
+<script>
+// ===== ELEVENLABS CONVERSATIONAL AI ENGINE =====
+// Connects directly via WebSocket - no iframe, no widget, no cross-origin issues
+(function() {
+  let ws = null;
+  let audioContext = null;
+  let mediaStream = null;
+  let sourceNode = null;
+  let isCallActive = false;
+  let currentAgentId = null;
+  let audioQueue = [];
+  let isPlaying = false;
+  let callMode = "idle";
+
+  window._elCall = { start: startCall, end: endCall, isActive: function(){return isCallActive} };
+
+  function updateCallUI(mode, containerId) {
+    callMode = mode;
+    var container = document.getElementById(containerId);
+    if (!container) return;
+    var statusEl = container.querySelector(".el-call-status");
+    var orbEl = container.querySelector(".el-call-orb");
+    var btnEl = container.querySelector(".el-call-btn");
+    if (statusEl) {
+      var msgs = {idle:"Click to start call",connecting:"Connecting...",listening:"Listening...",speaking:"Agent speaking..."};
+      statusEl.textContent = msgs[mode] || "";
+    }
+    if (orbEl) orbEl.className = "el-call-orb el-mode-" + mode;
+    if (btnEl) {
+      btnEl.textContent = mode === "idle" ? "Start Call" : "End Call";
+      btnEl.onclick = mode === "idle" ? function(){startCall(container.dataset.agentId, containerId)} : function(){endCall(containerId)};
+    }
+  }
+
+  function buildCallUI(containerId) {
+    return '<div class="el-call-ui" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;min-height:320px;gap:20px;padding:24px;">' +
+      '<div class="el-call-orb el-mode-idle" style="width:120px;height:120px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all 0.5s ease;"></div>' +
+      '<div class="el-call-status" style="font-size:14px;color:var(--text2);font-weight:500;">Click to start call</div>' +
+      '<button class="el-call-btn" style="padding:12px 32px;border-radius:24px;border:none;font-weight:700;font-size:14px;cursor:pointer;transition:all 0.2s;background:var(--accent);color:#fff;">Start Call</button>' +
+      '</div>';
+  }
+  window._elBuildCallUI = buildCallUI;
+
+  async function startCall(agentId, containerId) {
+    if (isCallActive) { endCall(containerId); return; }
+    currentAgentId = agentId;
+    updateCallUI("connecting", containerId);
+    try {
+      mediaStream = await navigator.mediaDevices.getUserMedia({audio:{sampleRate:16000,channelCount:1,echoCancellation:true,noiseSuppression:true}});
+      audioContext = new (window.AudioContext || window.webkitAudioContext)({sampleRate:16000});
+      var wsUrl = "wss://api.elevenlabs.io/v1/convai/conversation?agent_id=" + agentId;
+      ws = new WebSocket(wsUrl);
+      ws.binaryType = "arraybuffer";
+
+      ws.onopen = function() {
+        isCallActive = true;
+        updateCallUI("listening", containerId);
+        startRecording(containerId);
+      };
+
+      ws.onmessage = function(event) {
+        try {
+          if (typeof event.data === "string") {
+            var msg = JSON.parse(event.data);
+            handleServerMessage(msg, containerId);
+          } else {
+            handleAudioData(event.data, containerId);
+          }
+        } catch(e) { console.error("WS message error:", e); }
+      };
+
+      ws.onerror = function(err) { console.error("WebSocket error:", err); endCall(containerId); };
+      ws.onclose = function() { if (isCallActive) endCall(containerId); };
+
+    } catch(err) {
+      console.error("Call start error:", err);
+      var ctr = document.getElementById(containerId);
+      if (ctr) { var st = ctr.querySelector(".el-call-status"); if(st) st.textContent = "Mic access denied. Please allow microphone."; }
+      updateCallUI("idle", containerId);
+    }
+  }
+
+  function handleServerMessage(msg, containerId) {
+    if (msg.type === "conversation_initiation_metadata") {
+      console.log("ElevenLabs conversation started", msg);
+    } else if (msg.type === "agent_response") {
+      updateCallUI("speaking", containerId);
+    } else if (msg.type === "user_transcript") {
+      // user spoke
+    } else if (msg.type === "interruption") {
+      audioQueue = []; isPlaying = false; updateCallUI("listening", containerId);
+    } else if (msg.type === "ping") {
+      if (ws && ws.readyState === 1) ws.send(JSON.stringify({type:"pong",event_id:msg.event_id}));
+    } else if (msg.type === "audio") {
+      if (msg.audio && msg.audio.chunk) {
+        var bStr = atob(msg.audio.chunk);
+        var bytes = new Uint8Array(bStr.length);
+        for (var i=0;i<bStr.length;i++) bytes[i]=bStr.charCodeAt(i);
+        handleAudioData(bytes.buffer, containerId);
+      }
+    }
+  }
+
+  function handleAudioData(arrayBuffer, containerId) {
+    updateCallUI("speaking", containerId);
+    audioQueue.push(arrayBuffer);
+    if (!isPlaying) playNextAudio(containerId);
+  }
+
+  async function playNextAudio(containerId) {
+    if (audioQueue.length === 0) { isPlaying = false; if (isCallActive) updateCallUI("listening", containerId); return; }
+    isPlaying = true;
+    var buffer = audioQueue.shift();
+    try {
+      var ab = await audioContext.decodeAudioData(buffer.slice(0));
+      var src = audioContext.createBufferSource(); src.buffer = ab; src.connect(audioContext.destination);
+      src.onended = function(){ playNextAudio(containerId); }; src.start(0);
+    } catch(e) {
+      try {
+        var view = new DataView(buffer); var floats = new Float32Array(buffer.byteLength/2);
+        for(var i=0;i<floats.length;i++) floats[i]=view.getInt16(i*2,true)/32768;
+        var ab2 = audioContext.createBuffer(1,floats.length,16000); ab2.getChannelData(0).set(floats);
+        var src2 = audioContext.createBufferSource(); src2.buffer = ab2; src2.connect(audioContext.destination);
+        src2.onended = function(){ playNextAudio(containerId); }; src2.start(0);
+      } catch(e2) { console.error("Audio error:",e2); playNextAudio(containerId); }
+    }
+  }
+
+  function startRecording(containerId) {
+    if (!mediaStream || !ws) return;
+    var src = audioContext.createMediaStreamSource(mediaStream);
+    var proc = audioContext.createScriptProcessor(4096, 1, 1);
+    proc.onaudioprocess = function(e) {
+      if (!isCallActive || !ws || ws.readyState !== 1) return;
+      var input = e.inputBuffer.getChannelData(0);
+      var pcm = new Int16Array(input.length);
+      for (var i=0;i<input.length;i++) pcm[i]=Math.max(-32768,Math.min(32767,Math.round(input[i]*32767)));
+      var bts = new Uint8Array(pcm.buffer); var bin="";
+      for (var i=0;i<bts.length;i++) bin+=String.fromCharCode(bts[i]);
+      ws.send(JSON.stringify({user_audio_chunk:btoa(bin)}));
+    };
+    src.connect(proc); proc.connect(audioContext.destination);
+    sourceNode = {source:src, processor:proc};
+  }
+
+  function endCall(containerId) {
+    isCallActive = false; currentAgentId = null; audioQueue = []; isPlaying = false;
+    if (ws) { try{ws.close();}catch(e){} ws=null; }
+    if (sourceNode) { try{sourceNode.processor.disconnect();sourceNode.source.disconnect();}catch(e){} sourceNode=null; }
+    if (mediaStream) { mediaStream.getTracks().forEach(function(t){t.stop()}); mediaStream=null; }
+    if (audioContext) { try{audioContext.close();}catch(e){} audioContext=null; }
+    if (containerId) updateCallUI("idle", containerId);
+  }
+
+})();
+</script>
+<style>
+.el-call-orb { background:radial-gradient(circle,var(--surface2) 0%,var(--border) 100%); box-shadow:0 0 20px rgba(100,100,255,0.1); }
+.el-call-orb.el-mode-connecting { background:radial-gradient(circle,#3b82f620 0%,#3b82f640 100%); box-shadow:0 0 30px rgba(59,130,246,0.3); animation:el-pulse 1.5s ease-in-out infinite; }
+.el-call-orb.el-mode-listening { background:radial-gradient(circle,#22c55e20 0%,#22c55e40 100%); box-shadow:0 0 30px rgba(34,197,94,0.3); animation:el-pulse 2s ease-in-out infinite; }
+.el-call-orb.el-mode-speaking { background:radial-gradient(circle,#8b5cf620 0%,#8b5cf650 100%); box-shadow:0 0 40px rgba(139,92,246,0.4); animation:el-pulse 0.8s ease-in-out infinite; }
+@keyframes el-pulse { 0%,100%{transform:scale(1);opacity:.8} 50%{transform:scale(1.08);opacity:1} }
+.el-call-btn:hover { opacity:0.9; transform:scale(1.03); }
+</style>
 </body>
 </html>
