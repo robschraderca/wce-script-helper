@@ -2431,23 +2431,27 @@ function toggleFloatSize() {
   }
 
   function handleServerMessage(msg, containerId) {
-    if (msg.type === "conversation_initiation_metadata") {
-      console.log("ElevenLabs conversation started", msg);
-    } else if (msg.type === "agent_response") {
-      updateCallUI("speaking", containerId);
-    } else if (msg.type === "user_transcript") {
-      // user spoke
-    } else if (msg.type === "interruption") {
-      audioQueue = []; isPlaying = false; updateCallUI("listening", containerId);
-    } else if (msg.type === "ping") {
-      if (ws && ws.readyState === 1) ws.send(JSON.stringify({type:"pong",event_id:msg.event_id}));
-    } else if (msg.type === "audio") {
-      if (msg.audio && msg.audio.chunk) {
-        var bStr = atob(msg.audio.chunk);
-        var bytes = new Uint8Array(bStr.length);
-        for (var i=0;i<bStr.length;i++) bytes[i]=bStr.charCodeAt(i);
-        handleAudioData(bytes.buffer, containerId);
-      }
+    if (msg.audio_event && msg.audio_event.audio_base_64) {
+      var bStr = atob(msg.audio_event.audio_base_64);
+      var bytes = new Uint8Array(bStr.length);
+      for (var i = 0; i < bStr.length; i++) bytes[i] = bStr.charCodeAt(i);
+      handleAudioData(bytes.buffer, containerId);
+      return;
+    }
+    if (msg.type === 'conversation_initiation_metadata') {
+      conversationReady = true;
+      console.log('ElevenLabs conversation ready');
+    } else if (msg.type === 'agent_response') {
+      updateCallUI('speaking', containerId);
+    } else if (msg.type === 'agent_chat_response_part') {
+      if (msg.text_response_part && msg.text_response_part.type === 'start') updateCallUI('speaking', containerId);
+    } else if (msg.type === 'user_transcript') {
+      updateCallUI('listening', containerId);
+    } else if (msg.type === 'interruption') {
+      audioQueue = []; isPlaying = false; updateCallUI('listening', containerId);
+    } else if (msg.type === 'ping') {
+      var evId = (msg.ping_event && msg.ping_event.event_id) ? msg.ping_event.event_id : msg.event_id;
+      if (ws && ws.readyState === 1) ws.send(JSON.stringify({type:'pong',event_id:evId}));
     }
   }
 
@@ -2481,7 +2485,7 @@ function toggleFloatSize() {
     var src = audioContext.createMediaStreamSource(mediaStream);
     var proc = audioContext.createScriptProcessor(4096, 1, 1);
     proc.onaudioprocess = function(e) {
-      if (!isCallActive || !ws || ws.readyState !== 1) return;
+      if (!isCallActive || !ws || ws.readyState !== 1 || !conversationReady) return;
       var input = e.inputBuffer.getChannelData(0);
       var pcm = new Int16Array(input.length);
       for (var i=0;i<input.length;i++) pcm[i]=Math.max(-32768,Math.min(32767,Math.round(input[i]*32767)));
