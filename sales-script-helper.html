@@ -114,6 +114,45 @@
   .tab-content { display: none; }
   .tab-content.active { display: block; }
 
+  /* PERSONA CARDS */
+  .persona-card:hover { background: var(--border) !important; transform: translateY(-2px); }
+
+  /* FLOATING PRACTICE PANEL */
+  #floating-practice {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    width: 420px;
+    height: 380px;
+    background: #000;
+    border: 1px solid var(--accent);
+    border-radius: 12px 0 0 0;
+    z-index: 9999;
+    box-shadow: -4px -4px 20px rgba(0,0,0,0.6);
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #floating-practice.active { display: flex; }
+  #floating-practice.expanded { width: 600px; height: 520px; }
+  #floating-practice-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    cursor: grab;
+    flex-shrink: 0;
+  }
+  #floating-practice-header .fp-label { font-size: 13px; font-weight: 600; color: var(--accent); }
+  #floating-practice-header button {
+    background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; padding: 2px 6px;
+  }
+  #floating-practice-header button:hover { color: var(--text); }
+  #floating-practice-body { flex: 1; overflow: hidden; }
+  #floating-practice-body iframe { width: 100%; height: 100%; border: none; display: block; }
+
   /* SCRIPT SECTION */
   .script-phase {
     margin-bottom: 28px;
@@ -1836,27 +1875,156 @@
     <div id="tab-aipractice" class="tab-content">
       <div class="section-title" style="display:flex;align-items:center;gap:10px;">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-        WCE Practice Call
+        AI Practice — Choose a Prospect
       </div>
-      <div class="section-subtitle">Practice your pitch against a realistic AI prospect. Speak out loud — the AI will push back with real objections. 15 min max per session.</div>
+      <div class="section-subtitle">Pick a persona to practice with. Start easy and work your way up. Click "Start" once the call loads, then speak your opening line.</div>
 
-      <div style="margin-top:16px;border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#000;">
-        <iframe
-          src="https://app.toughtongueai.com/embed/69cb49228532fdfe76228c96?name=WCE%20Practice%20Call&hidePoweredBy=true&showTimer=true&skipPrecheck=true&maxDuration=900&subtitles=true"
-          width="100%"
-          height="700px"
-          frameborder="0"
-          allow="microphone; camera; display-capture"
-          style="display:block;"
-        ></iframe>
+      <!-- PERSONA GRID -->
+      <div id="persona-grid" style="margin-top:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
+
+        <!-- EASY 1 -->
+        <div class="persona-card" onclick="loadPersona(this)" data-scenario="69cb49228532fdfe76228c96" data-name="Maria%20-%20Warm%20Lead" data-difficulty="easy" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:all 0.2s;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#34d399,#059669);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;">M</div>
+            <div>
+              <div style="font-weight:600;color:var(--text);font-size:14px;">Maria — Warm Lead</div>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">
+                <span style="background:#059669;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">EASY</span>
+              </div>
+            </div>
+          </div>
+          <div style="color:var(--text-muted);font-size:12px;line-height:1.5;">Genuinely interested. Saw the mailer and called back. Asks basic questions but is cooperative. Great for practicing your opening and qualification flow.</div>
+        </div>
+
+        <!-- EASY 2 -->
+        <div class="persona-card" onclick="loadPersona(this)" data-scenario="69cb49228532fdfe76228c96" data-name="James%20-%20Curious%20Caller" data-difficulty="easy" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:all 0.2s;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#34d399,#059669);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;">J</div>
+            <div>
+              <div style="font-weight:600;color:var(--text);font-size:14px;">James — Curious Caller</div>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">
+                <span style="background:#059669;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">EASY</span>
+              </div>
+            </div>
+          </div>
+          <div style="color:var(--text-muted);font-size:12px;line-height:1.5;">Wants to understand the program before committing. Asks "how does it work?" a lot but doesn't fight you. Good for practicing the How It Works and Debt Validation phases.</div>
+        </div>
+
+        <!-- EASY 3 -->
+        <div class="persona-card" onclick="loadPersona(this)" data-scenario="69cb49228532fdfe76228c96" data-name="Linda%20-%20Referred%20Friend" data-difficulty="easy" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:all 0.2s;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#34d399,#059669);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;">L</div>
+            <div>
+              <div style="font-weight:600;color:var(--text);font-size:14px;">Linda — Referred Friend</div>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">
+                <span style="background:#059669;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">EASY</span>
+              </div>
+            </div>
+          </div>
+          <div style="color:var(--text-muted);font-size:12px;line-height:1.5;">Her friend used the program and it worked. She's mostly sold already — just needs you to walk her through the steps. Practice your Owe/Pay/Save pitch and close.</div>
+        </div>
+
+        <!-- MEDIUM 1 -->
+        <div class="persona-card" onclick="loadPersona(this)" data-scenario="69cb49228532fdfe76228c96" data-name="Kevin%20-%20Credit%20Worrier" data-difficulty="medium" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:all 0.2s;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#fbbf24,#d97706);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;">K</div>
+            <div>
+              <div style="font-weight:600;color:var(--text);font-size:14px;">Kevin — Credit Worrier</div>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">
+                <span style="background:#d97706;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">MEDIUM</span>
+              </div>
+            </div>
+          </div>
+          <div style="color:var(--text-muted);font-size:12px;line-height:1.5;">Open to the program but terrified about his credit score dropping. Keeps circling back to "what happens to my credit?" Practice the credit impact rebuttal and soft landing.</div>
+        </div>
+
+        <!-- MEDIUM 2 -->
+        <div class="persona-card" onclick="loadPersona(this)" data-scenario="69cb49228532fdfe76228c96" data-name="Diane%20-%20Spouse%20Blocker" data-difficulty="medium" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:all 0.2s;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#fbbf24,#d97706);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;">D</div>
+            <div>
+              <div style="font-weight:600;color:var(--text);font-size:14px;">Diane — Spouse Blocker</div>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">
+                <span style="background:#d97706;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">MEDIUM</span>
+              </div>
+            </div>
+          </div>
+          <div style="color:var(--text-muted);font-size:12px;line-height:1.5;">Interested but keeps saying "I need to talk to my husband first." Uses the spouse as a shield. Practice commitment questions and creating urgency without being pushy.</div>
+        </div>
+
+        <!-- MEDIUM 3 -->
+        <div class="persona-card" onclick="loadPersona(this)" data-scenario="69cb49228532fdfe76228c96" data-name="Tony%20-%20Loan%20Seeker" data-difficulty="medium" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:all 0.2s;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#fbbf24,#d97706);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;">T</div>
+            <div>
+              <div style="font-weight:600;color:var(--text);font-size:14px;">Tony — Loan Seeker</div>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">
+                <span style="background:#d97706;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">MEDIUM</span>
+              </div>
+            </div>
+          </div>
+          <div style="color:var(--text-muted);font-size:12px;line-height:1.5;">Keeps asking for a loan or consolidation. Doesn't understand debt validation vs. borrowing more. Practice redirecting away from the "I just need a loan" objection.</div>
+        </div>
+
+        <!-- HARD 1 -->
+        <div class="persona-card" onclick="loadPersona(this)" data-scenario="69cb49228532fdfe76228c96" data-name="Rick%20-%20The%20Skeptic" data-difficulty="hard" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:all 0.2s;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#f87171,#dc2626);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;">R</div>
+            <div>
+              <div style="font-weight:600;color:var(--text);font-size:14px;">Rick — The Skeptic</div>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">
+                <span style="background:#dc2626;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">HARD</span>
+              </div>
+            </div>
+          </div>
+          <div style="color:var(--text-muted);font-size:12px;line-height:1.5;">Thinks it's a scam. "Too good to be true." Challenges everything. Won't give info easily. Practice handling trust objections and the "how do I know this works?" rebuttal.</div>
+        </div>
+
+        <!-- HARD 2 -->
+        <div class="persona-card" onclick="loadPersona(this)" data-scenario="69cb49228532fdfe76228c96" data-name="Angela%20-%20Hostile%20Callback" data-difficulty="hard" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:all 0.2s;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#f87171,#dc2626);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;">A</div>
+            <div>
+              <div style="font-weight:600;color:var(--text);font-size:14px;">Angela — Hostile Callback</div>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">
+                <span style="background:#dc2626;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">HARD</span>
+              </div>
+            </div>
+          </div>
+          <div style="color:var(--text-muted);font-size:12px;line-height:1.5;">Angry she was contacted. Defensive, emotional, throws every objection. Won't pay, scared of being sued, doesn't trust anyone. The full gauntlet — every rebuttal in the book.</div>
+        </div>
+
+      </div><!-- /persona-grid -->
+
+      <!-- EMBED CONTAINER (hidden until persona selected) -->
+      <div id="practice-embed-container" style="display:none;margin-top:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div id="active-persona-label" style="font-weight:600;color:var(--text);font-size:15px;"></div>
+          <div style="display:flex;gap:8px;">
+            <button onclick="launchFloating()" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:13px;cursor:pointer;font-weight:600;">Read Script While Practicing</button>
+            <button onclick="backToPersonas()" style="background:var(--surface2);color:var(--text-muted);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:13px;cursor:pointer;font-weight:500;">Change Prospect</button>
+          </div>
+        </div>
+        <div style="border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#000;">
+          <iframe
+            id="practice-iframe"
+            src=""
+            width="100%"
+            height="700px"
+            frameborder="0"
+            allow="microphone; camera; display-capture"
+            style="display:block;"
+          ></iframe>
+        </div>
       </div>
 
+      <!-- TIPS (always visible) -->
       <div style="margin-top:16px;padding:16px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);">
         <div style="font-weight:600;color:var(--accent);margin-bottom:8px;">Tips for Practice</div>
         <ul style="color:var(--text-muted);font-size:13px;line-height:1.8;padding-left:18px;">
           <li>Click <strong style="color:var(--text);">Start</strong> and speak your opening line as if you just answered a callback</li>
-          <li>The AI prospect will push back — handle objections using your rebuttals</li>
-          <li>Work through all phases: Qualify → Probe → Debt Discussion → Pitch → Close</li>
+          <li>Start with <strong style="color:var(--green);">Easy</strong> prospects to nail the script flow, then move to <strong style="color:var(--yellow);">Medium</strong> and <strong style="color:var(--red);">Hard</strong></li>
+          <li>Work through all phases: Qualify &#8594; Probe &#8594; Debt Discussion &#8594; Pitch &#8594; Close</li>
           <li>Use the <strong style="color:var(--text);">Owe / Pay / Save</strong> structure when presenting numbers</li>
           <li>Session auto-ends at 15 minutes — keep it tight like a real call</li>
         </ul>
@@ -2103,6 +2271,112 @@ function toggleAllCrm() {
     }
   });
   document.getElementById('toggleCrmLabel').textContent = crmVisible ? 'Hide CRM' : 'Show CRM';
+}
+
+// AI Practice — persona loading
+function loadPersona(card) {
+  const scenario = card.dataset.scenario;
+  const name = card.dataset.name;
+  const label = decodeURIComponent(name);
+  const difficulty = card.dataset.difficulty;
+  const colors = { easy: 'var(--green)', medium: 'var(--yellow)', hard: 'var(--red)' };
+  const labels = { easy: 'EASY', medium: 'MEDIUM', hard: 'HARD' };
+
+  // Build embed URL
+  const embedUrl = 'https://app.toughtongueai.com/embed/' + scenario
+    + '?name=' + name
+    + '&hidePoweredBy=true&showTimer=true&skipPrecheck=true&maxDuration=900&subtitles=true';
+
+  // Set iframe src
+  document.getElementById('practice-iframe').src = embedUrl;
+
+  // Update label
+  const labelEl = document.getElementById('active-persona-label');
+  labelEl.innerHTML = '<span style="color:' + colors[difficulty] + ';font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid ' + colors[difficulty] + ';margin-right:8px;">' + labels[difficulty] + '</span> ' + label;
+
+  // Hide grid, show embed + show float button
+  document.getElementById('persona-grid').style.display = 'none';
+  document.getElementById('practice-embed-container').style.display = 'block';
+
+  // Store current persona info for floating mode
+  document.getElementById('practice-embed-container').dataset.scenario = scenario;
+  document.getElementById('practice-embed-container').dataset.name = name;
+  document.getElementById('practice-embed-container').dataset.difficulty = difficulty;
+
+  // Highlight selected card
+  document.querySelectorAll('.persona-card').forEach(c => c.style.borderColor = 'var(--border)');
+  card.style.borderColor = colors[difficulty];
+}
+
+function launchFloating() {
+  const container = document.getElementById('practice-embed-container');
+  const scenario = container.dataset.scenario;
+  const name = container.dataset.name;
+  const difficulty = container.dataset.difficulty;
+
+  // Clear the inline iframe
+  document.getElementById('practice-iframe').src = '';
+  document.getElementById('practice-embed-container').style.display = 'none';
+  document.getElementById('persona-grid').style.display = 'grid';
+
+  // Launch floating panel and switch to script
+  startFloatingPractice(scenario, name, difficulty);
+}
+
+function backToPersonas() {
+  // Clear iframe to stop any active session
+  document.getElementById('practice-iframe').src = '';
+  // Show grid, hide embed
+  document.getElementById('persona-grid').style.display = 'grid';
+  document.getElementById('practice-embed-container').style.display = 'none';
+}
+</script>
+
+<!-- FLOATING PRACTICE PANEL -->
+<div id="floating-practice">
+  <div id="floating-practice-header">
+    <span class="fp-label" id="fp-persona-label">Practice Call</span>
+    <div style="display:flex;gap:4px;">
+      <button onclick="toggleFloatSize()" title="Resize" id="fp-resize-btn">&#x26F6;</button>
+      <button onclick="endFloatingPractice()" title="End Call">&times;</button>
+    </div>
+  </div>
+  <div id="floating-practice-body">
+    <iframe id="floating-iframe" src="" allow="microphone; camera; display-capture"></iframe>
+  </div>
+</div>
+
+<script>
+// Floating practice panel
+let floatExpanded = false;
+
+function startFloatingPractice(scenarioId, personaName, difficulty) {
+  const url = 'https://app.toughtongueai.com/embed/' + scenarioId
+    + '?name=' + personaName
+    + '&hidePoweredBy=true&showTimer=true&skipPrecheck=true&maxDuration=900&subtitles=true';
+
+  document.getElementById('floating-iframe').src = url;
+
+  const colors = { easy: 'var(--green)', medium: 'var(--yellow)', hard: 'var(--red)' };
+  const label = decodeURIComponent(personaName);
+  document.getElementById('fp-persona-label').innerHTML = '<span style="color:' + (colors[difficulty] || 'var(--accent)') + ';">' + label + '</span>';
+
+  document.getElementById('floating-practice').classList.add('active');
+
+  // Switch to script tab so they can read while practicing
+  showTab('script');
+}
+
+function endFloatingPractice() {
+  document.getElementById('floating-iframe').src = '';
+  document.getElementById('floating-practice').classList.remove('active', 'expanded');
+  floatExpanded = false;
+}
+
+function toggleFloatSize() {
+  const panel = document.getElementById('floating-practice');
+  floatExpanded = !floatExpanded;
+  panel.classList.toggle('expanded', floatExpanded);
 }
 </script>
 </body>
